@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Тест по коду</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #aa7efc;
+      padding: 40px;
+      text-align: center;
+      color: white;
+    }
+    #container {
+      max-width: 600px;
+      margin: auto;
+      background-color: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+      color: black;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 10px;
+      width: 80%;
+    }
+    .answer-btn {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 12px;
+      background-color: #f0f0f0;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+    }
+    .answer-btn:hover {
+      background-color: #dcdcdc;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h2>Пройди тест</h2>
+    <div id="code-block">
+      <input type="text" id="quizCode" placeholder="Введите код теста">
+      <button onclick="loadTest()">Начать</button>
+    </div>
+    <div id="quiz-block" style="display:none;">
+      <h3 id="questionText"></h3>
+      <div id="answers"></div>
+      <button onclick="nextQuestion()">Далее</button>
+    </div>
+    <div id="result-block" style="display:none;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0TgKtAewLx-ayBMo_iOS9ACmSvoNiT48",
+      authDomain: "world-of-quizizz.firebaseapp.com",
+      projectId: "world-of-quizizz"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let questions = [];
+    let current = 0;
+    let score = 0;
+
+    window.loadTest = async function() {
+      const code = document.getElementById("quizCode").value.trim();
+      if (!code) return alert("Введите код");
+
+      const ref = doc(db, "tests", code);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return alert("Тест не найден");
+
+      questions = snap.data().questions;
+      document.getElementById("code-block").style.display = "none";
+      document.getElementById("quiz-block").style.display = "block";
+      showQuestion();
+    }
+
+    function showQuestion() {
+      if (current >= questions.length) return showResult();
+      const q = questions[current];
+      document.getElementById("questionText").innerText = q.question;
+      const ansBlock = document.getElementById("answers");
+      ansBlock.innerHTML = "";
+      q.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.innerText = opt;
+        btn.className = "answer-btn";
+        btn.onclick = () => {
+          if (opt === q.correct) score++;
+          current++;
+          showQuestion();
+        };
+        ansBlock.appendChild(btn);
+      });
+    }
+
+    function showResult() {
+      document.getElementById("quiz-block").style.display = "none";
+      document.getElementById("result-block").style.display = "block";
+      document.getElementById("result-block").innerHTML = "<h2>Результат:</h2><p>Вы набрали " + score + " из " + questions.length + "</p>";
+    }
+  </script>
+</body>
+</html>
