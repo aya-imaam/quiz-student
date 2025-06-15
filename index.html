@@ -2,143 +2,177 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Тест по коду</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #aa7efc;
-      padding: 40px;
-      text-align: center;
-      color: white;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
     #container {
-      max-width: 600px;
-      margin: auto;
       background-color: white;
       border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+      max-width: 600px;
+      width: 100%;
       padding: 30px;
-      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-      color: black;
+      box-sizing: border-box;
     }
-    input, button {
+    h2 { margin-top: 0; }
+    .input-block, .question-block, .result-block { margin-top: 20px; }
+    input[type="text"] {
+      width: calc(100% - 24px);
       padding: 10px;
       font-size: 16px;
-      margin-top: 10px;
-      width: 80%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
     }
+    button {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #5c6bc0;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover { background-color: #3949ab; }
     .answer-btn {
       display: block;
       width: 100%;
-      margin: 5px 0;
+      margin: 10px 0;
       padding: 12px;
-      background-color: #f0f0f0;
+      background-color: #e0e0e0;
+      border: none;
       border-radius: 8px;
       cursor: pointer;
-      border: none;
+      font-size: 15px;
+      transition: background-color 0.3s;
     }
-    .answer-btn:hover {
-      background-color: #dcdcdc;
-    }
+    .answer-btn:hover { background-color: #d5d5d5; }
+    .answer-btn.selected { background-color: #9fa8da; color: white; }
   </style>
 </head>
 <body>
   <div id="container">
     <h2>Пройди тест</h2>
 
-    <!-- ввод кода -->
-    <div id="code-block">
-      <input type="text" id="quizCode" placeholder="Введите код теста">
+    <div class="input-block" id="code-block">
+      <input type="text" id="userName" placeholder="Ваше имя" />
+      <input type="text" id="quizCode" placeholder="Введите код теста" />
       <button onclick="loadTest()">Начать</button>
     </div>
 
-    <!-- сам тест -->
-    <div id="quiz-block" style="display:none;">
+    <div class="question-block" id="quiz-block" style="display:none;">
       <h3 id="questionText"></h3>
       <div id="answers"></div>
     </div>
 
-    <!-- результат -->
-    <div id="result-block" style="display:none;"></div>
+    <div class="result-block" id="result-block" style="display:none;"></div>
   </div>
 
   <script type="module">
-    // 1) Импорт и инициализация Firebase
-    import { initializeApp }      from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyD0TgKtAewLx-ayBMo_iOS9ACmSvoNiT48",
+      apiKey: "AIzaSyBlTRr6PiL0-A_Wv_ZcT1HZm_g2scT8t9U",
       authDomain: "world-of-quizizz.firebaseapp.com",
-      projectId: "world-of-quizizz"
+      projectId: "world-of-quizizz",
+      storageBucket: "world-of-quizizz.appspot.com",
+      messagingSenderId: "382506372134",
+      appId: "1:382506372134:web:31891e86d44e1e31c2f9c0"
     };
 
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // 2) Локальные переменные для теста
     let questions = [];
     let current   = 0;
     let score     = 0;
+    let quizCode  = '';
+    let userName  = '';
 
-    // 3) Функция загрузки теста по коду
     window.loadTest = async function() {
-      const code = document.getElementById("quizCode").value.trim();
-      if (!code) return alert("Введите код теста");
+      userName = document.getElementById("userName").value.trim();
+      quizCode = document.getElementById("quizCode").value.trim();
+      if (!userName) return alert("Введите ваше имя");
+      if (!quizCode) return alert("Введите код теста");
 
-      // заменили collection 'tests' на 'quiz'
-      const ref = doc(db, "quiz", code);
-      const snap = await getDoc(ref);
+      try {
+        const ref = doc(db, "quiz", quizCode);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          return alert("Тест с таким кодом не найден");
+        }
 
-      if (!snap.exists()) {
-        return alert("Тест с таким кодом не найден");
+        const data = snap.data();
+        console.log("Загруженные данные:", data);
+
+        questions = data.questions || data.test?.questions || data.quiz?.questions || [];
+        if (!Array.isArray(questions) || !questions.length) {
+          return alert("В тесте нет вопросов или неверная структура данных");
+        }
+
+        document.getElementById("code-block").style.display = "none";
+        document.getElementById("quiz-block").style.display = "block";
+        showQuestion();
+      } catch (error) {
+        console.error("Ошибка при загрузке теста:", error);
+        alert("Ошибка при загрузке теста\n" + error.message);
       }
+    };
 
-      // структура: { questions: [ { question, answers: [...], correct: index }, ... ] }
-      const data = snap.data();
-      questions = data.questions;
-      if (!Array.isArray(questions) || !questions.length) {
-        return alert("В тесте нет вопросов");
-      }
-
-      // показываем первый вопрос
-      document.getElementById("code-block").style.display   = "none";
-      document.getElementById("quiz-block").style.display   = "block";
-      showQuestion();
-    }
-
-    // 4) Рендер вопроса
     function showQuestion() {
       if (current >= questions.length) {
         return showResult();
       }
-
       const q = questions[current];
-      document.getElementById("questionText").innerText = `Вопрос ${current+1}: ${q.question}`;
+      const questionText = q.text || q.question || "Без названия";
+      const answerList = Array.isArray(q.options) ? q.options : q.answers || [];
+      if (!answerList.length) {
+        console.error("У вопроса нет ответов:", q);
+        alert("Ошибка: отсутствуют варианты ответов для вопроса.");
+        return;
+      }
+
+      document.getElementById("questionText").innerText = `Вопрос ${current+1}: ${questionText}`;
       const ansBlock = document.getElementById("answers");
       ansBlock.innerHTML = "";
 
-      // создаём кнопки для каждого ответа
-      q.answers.forEach((text, idx) => {
+      answerList.forEach((text, idx) => {
         const btn = document.createElement("button");
-        btn.innerText   = text;
-        btn.className   = "answer-btn";
-        btn.onclick     = () => {
-          if (idx === q.correct) score++;
-          current++;
-          showQuestion();
+        btn.innerText = text;
+        btn.className = "answer-btn";
+        btn.onclick   = () => {
+          const correctIdx = q.correct ?? q.correctAnswer ?? -1;
+          if (idx === correctIdx) score++;
+          btn.classList.add('selected');
+          setTimeout(() => { current++; showQuestion(); }, 300);
         };
         ansBlock.appendChild(btn);
       });
     }
 
-    // 5) Показ результата
     function showResult() {
-      document.getElementById("quiz-block").style.display   = "none";
+      document.getElementById("quiz-block").style.display = "none";
       const res = document.getElementById("result-block");
+      const percent = Math.round((score / questions.length) * 100);
       res.style.display = "block";
       res.innerHTML = `
-        <h2>Результат:</h2>
-        <p>Вы набрали <strong>${score}</strong> из <strong>${questions.length}</strong></p>
+        <h2>Результат для ${userName}:</h2>
+        <p>Вы набрали <strong>${score}</strong> из <strong>${questions.length}</strong> (${percent}%)</p>
         <button onclick="location.reload()">Пройти ещё раз</button>
       `;
     }
